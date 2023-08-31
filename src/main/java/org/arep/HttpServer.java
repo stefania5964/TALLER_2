@@ -52,10 +52,11 @@ public class HttpServer {
                 System.exit(1);
             }
 
-            PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+            OutputStream out = clientSocket.getOutputStream();
             BufferedReader in = new BufferedReader(new InputStreamReader(
                     clientSocket.getInputStream()));
-            String inputLine, outputLine;
+            String inputLine;
+            byte[] outputLine;
 
             boolean firstLine = true;
             String request = "/form";
@@ -75,10 +76,10 @@ public class HttpServer {
 
             if (request.startsWith("/form?") && method.equals("POST")) {
                 String requestedMovie = request.replace("/form?name=", "");
-                outputLine = "HTTP/1.1 200 OK\r\n" +
+                outputLine = ("HTTP/1.1 200 OK\r\n" +
                         "Content-type: application/json\r\n"+
                         "\r\n"
-                        + getHello(requestedMovie.toLowerCase());
+                        + getHello(requestedMovie.toLowerCase())).getBytes();
 
             }else if(request.startsWith("/apps/")){
                 outputLine= getStaticFile(request.substring(5));
@@ -89,18 +90,24 @@ public class HttpServer {
             }else{
                 outputLine = getStaticFile("/404");
             }
-            out.println(outputLine);
+            out.write(outputLine);
             out.close();
             in.close();
             clientSocket.close();
         }
         serverSocket.close();
     }
-    private String getStaticFile(String Name)  {
+    private byte[] getStaticFile(String Name)  {
         Rest rest = services.get(Name);
-        String header = rest.getHeader();
-        String body = rest.getBody();
-        return header + body;
+        byte[] header = rest.getHeader();
+        byte[] body = rest.getBody();
+        byte[] i = new byte[header.length + body.length ];
+        for (int index = 0; index < header.length; index++){
+            i[index]= header[index];
+        }for(int index = header.length; index< i.length; index++){
+            i[index]= body[index-header.length];
+        }
+        return i;
     }
     public void addService(String key, Rest service) {
         services.put(key, service);
